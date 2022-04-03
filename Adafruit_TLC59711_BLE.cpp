@@ -25,7 +25,8 @@
  * BSD license, all text above must be included in any redistribution
  */
 
-#include <Adafruit_TLC59711.h>
+#include <Adafruit_TLC59711_BLE.h>
+#include <ArduinoBLE.h>
 
 /*!
  *  @brief  Instantiates a new Adafruit_TLC59711 class
@@ -39,7 +40,7 @@
 Adafruit_TLC59711::Adafruit_TLC59711(uint8_t n, uint8_t c, uint8_t d) {
   numdrivers = n;
 
-  BCr = BCg = BCb = 0x7F; // default 100% brigthness
+  BCr = BCg = BCb = 0x7F;  // default 100% brigthness
 
   pwmbuffer = (uint16_t *)calloc(2, 12 * n);
 
@@ -56,7 +57,7 @@ Adafruit_TLC59711::Adafruit_TLC59711(uint8_t n, uint8_t c, uint8_t d) {
 Adafruit_TLC59711::Adafruit_TLC59711(uint8_t n, SPIClass *theSPI) {
   numdrivers = n;
 
-  BCr = BCg = BCb = 0x7F; // default 100% brigthness
+  BCr = BCg = BCb = 0x7F;  // default 100% brigthness
 
   pwmbuffer = (uint16_t *)calloc(2, 12 * n);
 
@@ -72,7 +73,6 @@ void Adafruit_TLC59711::write() {
 
   // Magic word for write
   command = 0x25;
-
   command <<= 5;
   // OUTTMG = 1, EXTGCK = 0, TMGRST = 1, DSPRPT = 1, BLANK = 0 -> 0x16
   command |= 0x16;
@@ -86,6 +86,7 @@ void Adafruit_TLC59711::write() {
   command <<= 7;
   command |= BCb;
 
+  BLE.poll();
   noInterrupts();
 
   _spi_dev->beginTransaction();
@@ -95,18 +96,24 @@ void Adafruit_TLC59711::write() {
     _spi_dev->transfer(command >> 8);
     _spi_dev->transfer(command);
 
+    BLE.poll();
     // 12 channels per TLC59711
     for (int8_t c = 11; c >= 0; c--) {
       // 16 bits per channel, send MSB first
       _spi_dev->transfer(pwmbuffer[n * 12 + c] >> 8);
       _spi_dev->transfer(pwmbuffer[n * 12 + c]);
+
+      BLE.poll();
     }
   }
 
   delayMicroseconds(200);
+  BLE.poll();
   _spi_dev->endTransaction();
+  BLE.poll();
 
   interrupts();
+  BLE.poll();
 }
 
 /*!
@@ -120,6 +127,7 @@ void Adafruit_TLC59711::setPWM(uint8_t chan, uint16_t pwm) {
   if (chan > 12 * numdrivers)
     return;
   pwmbuffer[chan] = pwm;
+  BLE.poll();
 }
 
 /*!
@@ -156,6 +164,7 @@ void Adafruit_TLC59711::getLED(uint8_t lednum, uint16_t &r, uint16_t &g,
   r = pwmbuffer[lednum * 3];
   g = pwmbuffer[lednum * 3 + 1];
   b = pwmbuffer[lednum * 3 + 2];
+  BLE.poll();
 }
 
 /*!
@@ -165,7 +174,7 @@ void Adafruit_TLC59711::getLED(uint8_t lednum, uint16_t &r, uint16_t &g,
  */
 void Adafruit_TLC59711::simpleSetBrightness(uint8_t BC) {
   if (BC > 127) {
-    BC = 127; // maximum possible value since BC can only be 7 bit
+    BC = 127;  // maximum possible value since BC can only be 7 bit
   } else if (BC < 0) {
     BC = 0;
   }
@@ -184,7 +193,7 @@ void Adafruit_TLC59711::simpleSetBrightness(uint8_t BC) {
  */
 void Adafruit_TLC59711::setBrightness(uint8_t bcr, uint8_t bcg, uint8_t bcb) {
   if (bcr > 127) {
-    bcr = 127; // maximum possible value since BC can only be 7 bit
+    bcr = 127;  // maximum possible value since BC can only be 7 bit
   } else if (bcr < 0) {
     bcr = 0;
   }
@@ -192,7 +201,7 @@ void Adafruit_TLC59711::setBrightness(uint8_t bcr, uint8_t bcg, uint8_t bcb) {
   BCr = bcr;
 
   if (bcg > 127) {
-    bcg = 127; // maximum possible value since BC can only be 7 bit
+    bcg = 127;  // maximum possible value since BC can only be 7 bit
   } else if (bcg < 0) {
     bcg = 0;
   }
@@ -200,7 +209,7 @@ void Adafruit_TLC59711::setBrightness(uint8_t bcr, uint8_t bcg, uint8_t bcb) {
   BCg = bcg;
 
   if (bcb > 127) {
-    bcb = 127; // maximum possible value since BC can only be 7 bit
+    bcb = 127;  // maximum possible value since BC can only be 7 bit
   } else if (bcb < 0) {
     bcb = 0;
   }
